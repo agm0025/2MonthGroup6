@@ -16,11 +16,10 @@ unsigned long time1 = millis();
 unsigned long time2 = millis();
 //important variables
 uint8_t  temperature = 0; //The temperature sensor goes in increments of 1 degree celcius. 8 bit number
-double angularVelocity = 0.0; //We are making the assumption that
+double angularVelocity = 0.0; //
 void updateAngularVelocity(); //Function where all the complicated math will be stored to convert the acceleration into rotational velocity
 float altitude; //Is in meters currently.
 
-//Custom sensor objects:
 //Custom objects:
 Adafruit_LIS3DH lis1 = Adafruit_LIS3DH();
 Adafruit_LIS3DH lis2 = Adafruit_LIS3DH();
@@ -35,12 +34,10 @@ void setup() {
   //Set up accelerometer:
   Serial.begin(9600);
   if (! lis1.begin(0x18)) {   // change this to 0x19 for alternative i2c address
-    Serial.println("Couldnt start");
     OpenLog.println("Couldnt start");
     while (1);
   }
   if (! lis2.begin(0x19)) {
-    Serial.println("Couldnt start");
     OpenLog.println("Couldnt start");
     while (1);
   }
@@ -48,7 +45,6 @@ void setup() {
   lis2.setRange(LIS3DH_RANGE_4_G);
   //Set up pressure sensor:
   if (!pressureSensor.begin()) {
-    Serial.println("Could not find a valid BMP3 sensor, check wiring!");
     OpenLog.println("Could not find a valid BMP3 sensor, check wiring!");
     while (1);
   }
@@ -58,7 +54,6 @@ void setup() {
   //Set up I2C Communication
   Wire.begin();
   //Make header for csv file on openlog
-  Serial.println("Time, altitude, temperature, angular velocity");
   OpenLog.println("Time, altitude, temperature, angular velocity");
 }
 
@@ -79,7 +74,6 @@ void loop() {
     time2=millis();
     //write all of the data;
     String dataEntry = String(millis()) + "," + String(altitude) + "," + String(temperature) + "," + String(angularVelocity);
-    Serial.println(dataEntry);
     OpenLog.println(dataEntry);
 
     }
