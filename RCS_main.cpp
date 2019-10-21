@@ -1,50 +1,52 @@
 //Make sure you have the Adafruit_LIS3DH library from https://github.com/adafruit/Adafruit_LIS3DH
 //Also have the adafruit_sensor library https://learn.adafruit.com/adafruit-lis3dh-triple-axis-accelerometer-breakout/arduino
 //Pressure sensor/ altitude sensor library: https://github.com/adafruit/Adafruit_BMP3XX
-//Openlog libraries: https://github.com/sparkfun/OpenLog/tree/master/Libraries
 #include <Adafruit_LIS3DH.h>
 #include <Adafruit_Sensor.h>
 #include "Wire.h"
 #include "Adafruit_BMP3XX.h"
 #include <SoftwareSerial.h>
+
 #define START_CONTROL_ALTITUDE 0 //Measured in meters above sea level.
 #define SEALEVELPRESSURE_HPA (1013.25) //Pressure at sea level
+#define AXIS x //Which orientation is the LIS3DH in? IE which axis is = to circular acceleration.
+#define ACCELEROMETER_RADIUS 5 //in meters
 //Time variables used to control openlog
 unsigned long time1 = millis();
 unsigned long time2 = millis();
 
 //important variables
 uint8_t  temperature = 0; //The temperature sensor goes in increments of 1 degree celcius. 8 bit number
-double angularVelocity = 0.0; //We are making the assumption that
+double angularVelocity = 0.0; //In m/s^2
 void updateAngularVelocity(); //Function where all the complicated math will be stored to convert the acceleration into rotational velocity
 float altitude; //Is in meters currently.
 
-//Custom objects:
+//Custom library objects:
 Adafruit_LIS3DH lis1 = Adafruit_LIS3DH();
 Adafruit_LIS3DH lis2 = Adafruit_LIS3DH();
-Adafruit_BMP3XX pressureSensor;
 SoftwareSerial OpenLog(0, 5);
+Adafruit_BMP3XX pressureSensor;
 void setup() {
-  //Set up openlog
-  OpenLog.begin(9600);
   //Set up deltatime
   time1 = millis();
   time2 = millis();
+  //Set up openlog:
+  OpenLog.begin(9600);
   //Set up accelerometer:
   Serial.begin(9600);
   if (! lis1.begin(0x18)) {   // change this to 0x19 for alternative i2c address
-    OpenLog.println("Couldnt start");
+    Serial.println("Couldnt start");
     while (1);
   }
   if (! lis2.begin(0x19)) {
-    OpenLog.println("Couldnt start");
+    Serial.println("Couldnt start");
     while (1);
   }
   lis1.setRange(LIS3DH_RANGE_4_G);   // 2, 4, 8 or 16 G!
   lis2.setRange(LIS3DH_RANGE_4_G);
   //Set up pressure sensor:
   if (!pressureSensor.begin()) {
-    OpenLog.println("Could not find a valid BMP3 sensor, check wiring!");
+    Serial.println("Could not find a valid BMP3 sensor, check wiring!");
     while (1);
   }
   pressureSensor.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
@@ -79,9 +81,8 @@ void loop() {
   //Once the altitude is above START_CONTROL_ALTITUDE, start the auto adjustment algorithm.
   if (altitude > START_CONTROL_ALTITUDE) {
     //Adjustment algorithm
-
   }
 }
 void updateAngularVelocity() {
-  
+  angularVelocity = sqrt(((lis1.AXIS + lis2.AXIS)/2)*ACCELEROMETER_RADIUS);
 }
