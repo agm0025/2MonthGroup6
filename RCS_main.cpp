@@ -7,10 +7,21 @@
 #include "Wire.h"
 #include "Adafruit_BMP3XX.h"
 #include <SoftwareSerial.h>
+#include <SPI.h>
 #define START_CONTROL_ALTITUDE 0 //Measured in meters above sea level.
 #define SEALEVELPRESSURE_HPA (1013.25) //Pressure at sea level
 #define AXIS x //Which orientation is the LIS3DH in? IE which axis is = to circular acceleration.
 #define ACCELEROMETER_RADIUS 5 //in meters
+#define START_CONTROL_ALTITUDE 0 //Measured in meters above sea level.
+#define SEALEVELPRESSURE_HPA (1013.25) //Pressure at sea level
+#define AXIS y //Which orientation is the LIS3DH in? IE which axis is = to circular acceleration.
+#define ACCELEROMETER_RADIUS 0.1074 //in meters
+// Used for software SPI
+#define LIS3DH_CLK 13
+#define LIS3DH_MISO 12
+#define LIS3DH_MOSI 11
+// Used for hardware & software SPI
+#define LIS3DH_CS 10
 //Time variables used to control openlog
 unsigned long time1 = millis();
 unsigned long time2 = millis();
@@ -22,7 +33,7 @@ float altitude; //Is in meters currently.
 
 //Custom objects:
 Adafruit_LIS3DH lis1 = Adafruit_LIS3DH();
-Adafruit_LIS3DH lis2 = Adafruit_LIS3DH();
+Adafruit_LIS3DH lis2 = Adafruit_LIS3DH(LIS3DH_CS, LIS3DH_MOSI, LIS3DH_MISO, LIS3DH_CLK);
 Adafruit_BMP3XX pressureSensor;
 SoftwareSerial OpenLog(0, 5);
 void setup() {
@@ -37,12 +48,12 @@ void setup() {
     OpenLog.println("Couldnt start");
     while (1);
   }
-  if (! lis2.begin(0x19)) {
+  if (! lis2.begin(0x18)) {
     OpenLog.println("Couldnt start");
     while (1);
   }
-  lis1.setRange(LIS3DH_RANGE_4_G);   // 2, 4, 8 or 16 G!
-  lis2.setRange(LIS3DH_RANGE_4_G);
+  lis1.setRange(LIS3DH_RANGE_16_G);   // 2, 4, 8 or 16 G!
+  lis2.setRange(LIS3DH_RANGE_16_G);
   //Set up pressure sensor:
   if (!pressureSensor.begin()) {
     OpenLog.println("Could not find a valid BMP3 sensor, check wiring!");
@@ -61,6 +72,7 @@ void loop() {
   //update time1
   time1 = millis();
   //Update variables (altitude, temperature, pressure, etc.) Velocity must be updated ASAP, because velocity must be calculated from the acceleration, which will be lots of estimates, and could be an issue.
+updateAngularVelocity();
   //Read acceleration.
   lis1.read(); //Acceleration is measured in m/s^2.
   lis2.read();
@@ -83,5 +95,6 @@ void loop() {
   }
 }
 void updateAngularVelocity() {
+//make sure that there is not a sqrt of a neg number. Also make sure to use LIS3DH EVENTS FOR CALCULATIONS TO WORK!
   angularVelocity = sqrt(((lis1.AXIS + lis2.AXIS)/2)*ACCELEROMETER_RADIUS);
 }
