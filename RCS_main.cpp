@@ -11,7 +11,6 @@
 #define START_CONTROL_ALTITUDE 0 //Measured in meters above sea level.
 #define AXIS z//Which orientation is the LIS3DH in? IE which axis is = to circular acceleration.
 #define AXIS_TAN x 
-#define START_CONTROL_ALTITUDE 0 //Measured in meters above sea level.
 #define SEALEVELPRESSURE_HPA (1013.25) //Pressure at sea level
 #define ACCELEROMETER_RADIUS 4//0.1074 //in meters
 // Used for software SPI
@@ -24,6 +23,9 @@
 //Soelnoid valve pins
 #define VALVE_CLOCKWISE 4
 #define VALVE_COUNTERCLOCKWISE 7
+
+#define LED_PIN 2
+uint8_t ledTimer = 0;
 unsigned long time1 = millis();
 unsigned long time2 = millis();
 unsigned long timer = millis();
@@ -42,6 +44,7 @@ SoftwareSerial OpenLog(0, 5);
 void setup() {
   pinMode(VALVE_CLOCKWISE, OUTPUT);
   pinMode(VALVE_COUNTERCLOCKWISE, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
   //Set up openlog
   OpenLog.begin(9600);
   //Set up deltatime
@@ -96,16 +99,26 @@ void loop() {
   altitude = pressureSensor.readAltitude(SEALEVELPRESSURE_HPA); //In meters
   //Read temperature:
   temperature = pressureSensor.temperature;
-  //Every tenth of a second write the sensor data to the SD card.
+  //Every tenth of a second write the sensor data to the SD card. Also blink LED every second
   if (millis()-time2>=100) { //delta time .1 seconds
+    ledTimer++;
+    if (ledTimer == 10) {
+      //turn on LED
+      digitalWrite(LED_PIN, HIGH);
+    } else {
+      if (ledTimer == 20) {
+        digitalWrite(LED_PIN, LOW);
+        ledTimer = 0;
+        }
+    }
     time2=millis();
     //write all of the data;
-    //String dataEntry = String(millis()-time1) + ", alt: " + String(altitude) + ", temp: " + String(temperature) + ", lis1z: " + String(accelEvent1.acceleration.z) + " lis2z: "+ String(accelEvent2.acceleration.z) + " angAcl: " + angularVelocity +", direction: " + velocityDirection;
-    //OpenLog.println(dataEntry);
-    //Serial.println(dataEntry);
+    String dataEntry =  String(millis()) + ", " + String(altitude) + ", " + String(temperature) + ", " + angularVelocity + ", direction: " + velocityDirection;
+    OpenLog.println(dataEntry);
+    Serial.println(dataEntry);
     }
   //Once the altitude is above START_CONTROL_ALTITUDE, start the auto adjustment algorithm.
-  if (true/*abs(accelEvent1.acceleration.z)>1.0/*START_CONTROL_ALTITUDE*/) {
+  if (altitude>START_CONTROL_ALTITUDE) {
     if (angularVelocity > 2 && whichDirection == 0) {
       Serial.println("ROTATING t= " + String(millis()));
       if (velocityDirection > 0) {
@@ -118,11 +131,11 @@ void loop() {
           digitalWrite(VALVE_COUNTERCLOCKWISE, HIGH);
           Serial.println("It is rotating clockwise. Activating counterclockwise booster");
         }
-        timer = millis() + 1000;
+        timer = millis() + 100;
     }
   } else {
     pinMode(VALVE_CLOCKWISE, LOW);
-    }
+  }
   if (whichDirection != 0 && timer < millis()) {
       whichDirection = 0;
       digitalWrite(VALVE_CLOCKWISE, LOW);
@@ -130,7 +143,10 @@ void loop() {
       Serial.println("STOPPED ROTATION. timer = " + String(timer) + " time: " + String(millis()));
     }
   //Update velocity direction
-  velocityDirection = (millis()-time1)*(accelEvent1.acceleration.AXIS_TAN+accelEvent2.acceleration.AXIS_TAN)*(0.5);
+  velocityDirection += (millis()-time1)*(accelEvent1.acceleration.AXIS_TAN+accelEvent2.acceleration.AXIS_TAN)*(0.5)*(.1);
+  if (angularVelocity<.5) { //Make this number smaller than the sensitivity value
+    velocityDirection = 0;
+    }
     //update time1
   time1 = millis();
 }
