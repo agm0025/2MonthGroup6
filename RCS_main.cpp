@@ -9,11 +9,11 @@
 #include <SoftwareSerial.h>
 #include <SPI.h>
 #define START_CONTROL_ALTITUDE 0 //Measured in meters above sea level.
-#define AXIS x //Which orientation is the LIS3DH in? IE which axis is = to circular acceleration.
-#define AXIS_TAN y 
+#define AXIS z//Which orientation is the LIS3DH in? IE which axis is = to circular acceleration.
+#define AXIS_TAN x 
 #define START_CONTROL_ALTITUDE 0 //Measured in meters above sea level.
 #define SEALEVELPRESSURE_HPA (1013.25) //Pressure at sea level
-#define ACCELEROMETER_RADIUS 0.1074 //in meters
+#define ACCELEROMETER_RADIUS 4//0.1074 //in meters
 // Used for software SPI
 #define LIS3DH_CLK 13
 #define LIS3DH_MISO 12
@@ -22,10 +22,12 @@
 #define LIS3DH_CS 10
 //Time variables used to control openlog
 //Soelnoid valve pins
-#define VALVE_CLOCWISE 6
+#define VALVE_CLOCKWISE 4
 #define VALVE_COUNTERCLOCKWISE 7
 unsigned long time1 = millis();
 unsigned long time2 = millis();
+unsigned long timer = millis();
+uint8_t whichDirection = 0; // 1 = clockwise and 0 = counterclockwise
 //important variables
 uint8_t  temperature = 0; //The temperature sensor goes in increments of 1 degree celcius. 8 bit number
 double angularVelocity = 0.0; //
@@ -38,7 +40,8 @@ Adafruit_LIS3DH lis2 = Adafruit_LIS3DH(LIS3DH_CS, LIS3DH_MOSI, LIS3DH_MISO, LIS3
 Adafruit_BMP3XX pressureSensor;
 SoftwareSerial OpenLog(0, 5);
 void setup() {
-  
+  pinMode(VALVE_CLOCKWISE, OUTPUT);
+  pinMode(VALVE_COUNTERCLOCKWISE, OUTPUT);
   //Set up openlog
   OpenLog.begin(9600);
   //Set up deltatime
@@ -87,7 +90,7 @@ void loop() {
   lis1.getEvent(&accelEvent1);
   sensors_event_t accelEvent2; 
   lis2.getEvent(&accelEvent2);
-  angularVelocity = sqrt(((accelEvent1.acceleration.AXIS + accelEvent2.acceleration.AXIS)/2)*ACCELEROMETER_RADIUS);
+  angularVelocity = sqrt((abs(accelEvent1.acceleration.AXIS + accelEvent2.acceleration.AXIS)/2)*ACCELEROMETER_RADIUS);
   //Read Altitude:
   pressureSensor.performReading();
   altitude = pressureSensor.readAltitude(SEALEVELPRESSURE_HPA); //In meters
@@ -97,14 +100,35 @@ void loop() {
   if (millis()-time2>=100) { //delta time .1 seconds
     time2=millis();
     //write all of the data;
-    String dataEntry = String(millis()-time1) + ", alt: " + String(altitude) + ", temp: " + String(temperature) + ", lis1x: " + String(accelEvent1.acceleration.x) + " lis1y: "+ String(accelEvent1.acceleration.AXIS_TAN + accelEvent2.acceleration.AXIS_TAN) + ", direction: " + velocityDirection;
-    OpenLog.println(dataEntry);
-    Serial.println(dataEntry);
+    //String dataEntry = String(millis()-time1) + ", alt: " + String(altitude) + ", temp: " + String(temperature) + ", lis1z: " + String(accelEvent1.acceleration.z) + " lis2z: "+ String(accelEvent2.acceleration.z) + " angAcl: " + angularVelocity +", direction: " + velocityDirection;
+    //OpenLog.println(dataEntry);
+    //Serial.println(dataEntry);
     }
   //Once the altitude is above START_CONTROL_ALTITUDE, start the auto adjustment algorithm.
-  if (altitude > START_CONTROL_ALTITUDE) {
-    //Adjustment algorithm
-  }
+  if (true/*abs(accelEvent1.acceleration.z)>1.0/*START_CONTROL_ALTITUDE*/) {
+    if (angularVelocity > 2 && whichDirection == 0) {
+      Serial.println("ROTATING t= " + String(millis()));
+      if (velocityDirection > 0) {
+          
+          whichDirection = 1; //clockwise
+          digitalWrite(VALVE_CLOCKWISE, HIGH);
+          Serial.println("It is rotating counterclockwise. Activating clockwise booster");
+        } else {
+          whichDirection = 2; //counterclockwise
+          digitalWrite(VALVE_COUNTERCLOCKWISE, HIGH);
+          Serial.println("It is rotating clockwise. Activating counterclockwise booster");
+        }
+        timer = millis() + 1000;
+    }
+  } else {
+    pinMode(VALVE_CLOCKWISE, LOW);
+    }
+  if (whichDirection != 0 && timer < millis()) {
+      whichDirection = 0;
+      digitalWrite(VALVE_CLOCKWISE, LOW);
+      digitalWrite(VALVE_COUNTERCLOCKWISE, LOW);
+      Serial.println("STOPPED ROTATION. timer = " + String(timer) + " time: " + String(millis()));
+    }
   //Update velocity direction
   velocityDirection = (millis()-time1)*(accelEvent1.acceleration.AXIS_TAN+accelEvent2.acceleration.AXIS_TAN)*(0.5);
     //update time1
