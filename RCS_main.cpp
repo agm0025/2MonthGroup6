@@ -55,14 +55,14 @@ void setup() {
   if (! lis1.begin(0x18)) {   // change this to 0x19 for alternative i2c address
     OpenLog.println("Couldnt start");
     Serial.println("Couldnt start lis1");
-    while (1);
+    //while (1);
   } else {
     Serial.println("started lis1");
     }
   if (! lis2.begin(0x18)) {
     OpenLog.println("Couldnt start");
     Serial.println("Couldnt start lis2");
-    while (1);
+    //while (1);
   } else {
     Serial.println("started lis2");
     }
@@ -82,7 +82,7 @@ void setup() {
   //Set up I2C Communication
   Wire.begin();
   //Make header for csv file on openlog
-  OpenLog.println("Time, altitude, temperature, angular velocity");
+  OpenLog.println("Time, altitude, temperature, angular velocity, velocity direction, lis1x, lis1z, lis2x, lis2z");
 }
 
 void loop() {
@@ -113,7 +113,7 @@ void loop() {
     }
     time2=millis();
     //write all of the data;
-    String dataEntry =  String(millis()) + ", " + String(altitude) + ", " + String(temperature) + ", " + angularVelocity + ", direction: " + velocityDirection;
+    String dataEntry =  String(millis()) + ", " + String(altitude) + ", " + String(temperature) + ", " + angularVelocity + ", " + velocityDirection + ", " + String(accelEvent1.acceleration.x) + ", " + String(accelEvent1.acceleration.z) + ", " + String(accelEvent2.acceleration.x) + ", " + String(accelEvent2.acceleration.z);
     OpenLog.println(dataEntry);
     Serial.println(dataEntry);
     }
