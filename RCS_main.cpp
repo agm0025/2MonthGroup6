@@ -8,7 +8,7 @@
 #include "Adafruit_BMP3XX.h"
 #include <SoftwareSerial.h>
 #include <SPI.h>
-#define START_CONTROL_ALTITUDE 0 //Measured in meters above sea level.
+#define START_CONTROL_ALTITUDE 16000 //Measured in meters above sea level.
 #define AXIS z//Which orientation is the LIS3DH in? IE which axis is = to circular acceleration.
 #define AXIS_TAN x 
 #define SEALEVELPRESSURE_HPA (1013.25) //Pressure at sea level
